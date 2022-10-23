@@ -4,6 +4,7 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
 import _ from 'lodash';
+import fs from 'fs';
 
 const app: Application = express()
 
@@ -19,8 +20,8 @@ app.use(morgan('dev'))
 
 const port: number | string = process.env.PORT || 3001
 
-
 app.post('/upload-pdf', async (req, res) => {
+
     try {
         if(!req.files) {
             res.send({
@@ -28,13 +29,14 @@ app.post('/upload-pdf', async (req, res) => {
                 message: 'No file uploaded'
             });
         } else {
-            //Use the name of the input field (i.e. "pdf") to retrieve the uploaded file
+            
             let pdf = req.files.pdf as UploadedFile;
             
-            //Use the mv() method to place the file in the upload directory (i.e. "uploads")
+            if (pdf.mimetype !== `application/pdf`)
+                res.status(500).send(`File of inappropriate format was tried to be uploaded.`);
+
             pdf.mv('./uploads/' + pdf.name);
 
-            //send response
             res.send({
                 status: true,
                 message: 'File is uploaded',
@@ -48,8 +50,31 @@ app.post('/upload-pdf', async (req, res) => {
     } catch (err) {
         res.status(500).send(err);
     }
+
 });
 
+app.post('/delete-file',async (req, res) => {
+    
+    try {
+        const filename : string = req.body.fileName;
+
+        fs.stat(`./uploads/${filename}`, function (err, stats) {
+
+            if(!stats){
+                res.status(500).send(`File not found.`)
+            } else {
+                fs.unlink(`./uploads/${filename}`,function(err){
+                    res.status(200).send(`File is deleted`);
+               });     
+            }
+         
+
+         });
+    } catch (err) {
+        res.status(500).send(err);
+    }
+
+})
 
 app.listen(port, function () {
     console.log(`App is listening on port ${port} !`)
